@@ -21,8 +21,8 @@ npm run check
 
 The kit WebP files belong in `public/brand/`. The site build expects these 17 files and no substitutes:
 
-- hero-160.webp, hero-240.webp, hero-1200.webp, hero-1600.webp, hero-2048.webp
-- drone-160.webp, drone-240.webp, drone-1200.webp
-- storm-160.webp, storm-240.webp, storm-1200.webp
-- install-160.webp, install-240.webp, install-1200.webp
-- roofline-160.webp, roofline-240.webp, roofline-1200.webp
+- hero-160.webp, hero-240.webp, hero-800.webp, hero-1200.webp, hero-1600.webp, hero-2048.webp
+- drone-160.webp, drone-240.webp, drone-800.webp, drone-1200.webp
+- storm-160.webp, storm-240.webp, storm-800.webp, storm-1200.webp
+- install-160.webp, install-240.webp, install-800.webp, install-1200.webp
+- roofline-160.webp, roofline-240.webp, roofline-800.webp, roofline-1200.webp
