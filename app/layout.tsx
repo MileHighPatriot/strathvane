@@ -1,49 +1,55 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, Michroma } from "next/font/google";
-import Script from "next/script";
-import { CallBar, ConceptBar, Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
+import type { ReactNode } from "react";
+import { CallBar, ConceptBar, Footer } from "@/components/Chrome";
+import Header from "@/components/Header";
+import ScrollFx from "@/components/ScrollFx";
+import { brand } from "@/lib/brand";
+import { asset, site } from "@/lib/site";
 import "./globals.css";
 
-const michroma = Michroma({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-michroma",
-  display: "swap",
-  preload: false,
-});
-
+// Display face: one weight only (the kit's Michroma has no bold).
+const michroma = Michroma({ weight: "400", subsets: ["latin"], variable: "--font-michroma", display: "swap" });
 const plex = IBM_Plex_Sans({
   weight: ["400", "500", "600"],
   subsets: ["latin"],
   variable: "--font-plex",
   display: "swap",
-  preload: false,
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://milehighpatriot.github.io"),
-  other: {
-    "build-hash": process.env.NEXT_PUBLIC_BUILD_SHA || "dev",
-  },
-  icons: {
-    icon: [{ url: "/strathvane/icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/strathvane/apple-touch-icon.png", sizes: "180x180" }],
-  },
+export const viewport: Viewport = {
+  themeColor: brand.colors.basalt,
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const metadata: Metadata = {
+  metadataBase: new URL(site.origin),
+  icons: { icon: [{ url: asset("/icon.svg"), type: "image/svg+xml" }], apple: asset("/apple-touch-icon.png") },
+  other: { "build-hash": site.buildSha },
+};
+
+// Runs before first paint: marks the page as JS-capable so the no-JS layouts (stacked panels,
+// side-by-side slider, static estimator table) only show when scripts are really off.
+const jsFlag = "document.documentElement.classList.add('js')";
+
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${michroma.variable} ${plex.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: jsFlag }} />
+      </head>
       <body>
-        <Script id="js-flag" strategy="beforeInteractive">
-          {`document.documentElement.classList.add("js");if(matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("reduce");`}
-        </Script>
+        <a className="skip-link" href="#main">
+          Skip to content
+        </a>
         <ConceptBar />
         <Header />
-        <main>{children}</main>
+        <main id="main">{children}</main>
         <Footer />
         <CallBar />
+        <ScrollFx />
       </body>
     </html>
   );

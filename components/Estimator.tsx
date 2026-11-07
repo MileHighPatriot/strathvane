@@ -1,48 +1,56 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import {
-  CLAIMS,
-  DAMAGES,
-  LAYERS,
-  MATERIALS,
-  PITCHES,
-  SIZES,
-  STORIES,
-  computeEstimate,
-  fullDefaults,
-  teaserDefaults,
-  type EstimateInput,
-  type JobType,
-} from "@/lib/estimate";
+import { estimateDisclaimer, rangeLine } from "@/lib/content";
+import { defaults, groups, model, types } from "@/lib/estimator";
+
+function Meter({ squares, factor, complexity }: { squares: number; factor: number; complexity: number }) {
+  const rows = [
+    { label: "Squares, adjusted for pitch", value: squares.toFixed(1), pct: Math.min(100, (squares / 52) * 100) },
+    { label: "Pitch factor", value: factor.toFixed(2), pct: 20 + ((factor - 1) / 0.3) * 80 },
+    { label: "Job complexity", value: `${complexity}%`, pct: complexity },
+  ];
+  return (
+    <dl className="meter js-only">
+      {rows.map((r) => (
+        <div key={r.label} className="meter-row">
+          <dt>{r.label}</dt>
+          <dd>
+            <span className="meter-num">{r.value}</span>
+            <span className="meter-bar" aria-hidden="true">
+              <span style={{ transform: `scaleX(${r.pct / 100})` }} />
+            </span>
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 function Seg({
   name,
   legend,
   options,
-  value,
-  onChange,
+  pick,
+  onPick,
+  hideLegend,
 }: {
   name: string;
   legend: string;
-  options: readonly { id: string; label: string }[];
-  value: string;
-  onChange: (id: string) => void;
+  options: { label: string }[];
+  pick: number;
+  onPick: (i: number) => void;
+  hideLegend?: boolean;
 }) {
   return (
-    <fieldset className="choice">
-      <legend>{legend}</legend>
-      <div className="segment">
-        {options.map((option) => (
-          <label key={option.id} className="seg">
-            <input
-              type="radio"
-              name={name}
-              value={option.id}
-              checked={value === option.id}
-              onChange={() => onChange(option.id)}
-            />
-            <span>{option.label}</span>
+    <fieldset className="field">
+      <legend className={hideLegend ? "sr" : "field-label"}>{legend}</legend>
+      <div className="seg seg-wrap">
+        {options.map((o, i) => (
+          <label key={o.label} className="seg-opt">
+            <input type="radio" name={name} value={o.label} defaultChecked={i === pick} onChange={() => onPick(i)} />
+            <span>{o.label}</span>
           </label>
         ))}
       </div>
@@ -50,113 +58,99 @@ function Seg({
   );
 }
 
-export function Estimator({ variant }: { variant: "teaser" | "full" }) {
-  const defaults = variant === "teaser" ? teaserDefaults : fullDefaults;
-  const [input, setInput] = useState<EstimateInput>(defaults);
-  const result = useMemo(() => computeEstimate(input), [input]);
-  const set = (key: keyof EstimateInput) => (value: string) => setInput((prev) => ({ ...prev, [key]: value }));
-
+/** Static version for no-JS: every option, the range line, and the disclaimer. */
+export function EstimatorTable() {
   return (
-    <div className={`estimator ${input.type === "storm" ? "is-storm" : ""}`}>
-      <div className="type-row" role="group" aria-label="Type">
-        {(
-          [
-            ["replacement", "Full replacement"],
-            ["storm", "Storm or hail repair"],
-          ] as const
-        ).map(([id, label]) => (
-          <label key={id} className={variant === "full" ? "type-tile" : "seg"}>
-            <input
-              type="radio"
-              name={variant === "full" ? "job-type" : "teaser-type"}
-              checked={input.type === id}
-              onChange={() => set("type")(id as JobType)}
-            />
-            <span>{variant === "full" && id === "replacement" ? "Full roof replacement" : label}</span>
-          </label>
-        ))}
-      </div>
-      <Seg name={variant + "-size"} legend="About how big is the roof?" options={SIZES} value={input.size} onChange={set("size")} />
-      {variant === "full" ? (
-        <>
-          <Seg name="pitch" legend="How steep is it?" options={PITCHES} value={input.pitch} onChange={set("pitch")} />
-          <Seg name="material" legend="Which material?" options={MATERIALS} value={input.material} onChange={set("material")} />
-          <Seg name="layers" legend="Layers to tear off" options={LAYERS} value={input.layers} onChange={set("layers")} />
-          <Seg name="stories" legend="How many stories?" options={STORIES} value={input.stories} onChange={set("stories")} />
-          <div className="storm-only">
-            <Seg name="damage" legend="What damage do you see?" options={DAMAGES} value={input.damage} onChange={set("damage")} />
-            <Seg name="claim" legend="Filing an insurance claim?" options={CLAIMS} value={input.claim} onChange={set("claim")} />
-          </div>
-          <p>Permits: we handle them.</p>
-        </>
-      ) : null}
-      <div className="meter" aria-live="polite">
-        <div>
-          <p className="meter-label">Squares, adjusted for pitch</p>
-          <p className="stat">{result.squares}</p>
-        </div>
-        <div>
-          <p className="meter-label">Pitch factor</p>
-          <p className="stat">{result.factor}</p>
-        </div>
-        <div>
-          <p className="meter-label">Job complexity</p>
-          <p className="stat">{result.complexity}%</p>
-          <div className="meter-bar" role="img" aria-label={`Job complexity ${result.complexity} percent`}>
-            <span style={{ width: `${result.complexity}%` }} />
-          </div>
-        </div>
-      </div>
-      <p className="helper">1 square = 100 square feet of roof.</p>
-      {variant === "full" ? (
-        <>
-          <p>Your estimate: $[low] to $[high] (sample).</p>
-          <p>What&apos;s included: [list].</p>
-          <p>What could change it: decking condition, number of layers, pitch, and permit requirements.</p>
-        </>
-      ) : (
-        <p>$[low] to $[high] (sample)</p>
-      )}
-      <p className="disclaimer">
-        Range is an estimate only, not a quote. Final price set after an on-site inspection, decking condition, permits, and local code requirements.
-      </p>
-      <table className="static-model">
-        <caption>Sample options</caption>
+    <div className="nojs-only">
+      <table className="opt-table">
         <tbody>
+          {groups.map((g) => (
+            <tr key={g.name}>
+              <th scope="row">{g.legend}</th>
+              <td>{g.options.map((o) => o.label).join(" · ")}</td>
+            </tr>
+          ))}
           <tr>
-            <th scope="row">About how big is the roof?</th>
-            <td>{SIZES.map((item) => item.label).join(" / ")}</td>
-          </tr>
-          <tr>
-            <th scope="row">How steep is it?</th>
-            <td>Low, walkable / Medium / Steep</td>
-          </tr>
-          <tr>
-            <th scope="row">Which material?</th>
-            <td>Architectural shingle / Impact-resistant shingle / Standing seam metal / Concrete tile</td>
-          </tr>
-          <tr>
-            <th scope="row">Layers to tear off</th>
-            <td>1 / 2 / Not sure</td>
-          </tr>
-          <tr>
-            <th scope="row">How many stories?</th>
-            <td>1 / 2 / 3</td>
-          </tr>
-          <tr>
-            <th scope="row">What damage do you see?</th>
-            <td>Missing shingles / Hail dents / Leak inside / Not sure</td>
-          </tr>
-          <tr>
-            <th scope="row">Filing an insurance claim?</th>
-            <td>Yes / No / Not sure</td>
-          </tr>
-          <tr>
-            <th scope="row">Your estimate</th>
-            <td>$[low] to $[high] (sample)</td>
+            <td colSpan={2}>Permits: we handle them.</td>
           </tr>
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** Home S5 teaser: type tabs, one live row (roof size), the meter, range line, and disclaimer. */
+export function EstimatorTeaser() {
+  const [storm, setStorm] = useState(false);
+  const [size, setSize] = useState(defaults.size);
+  const m = useMemo(() => model({ ...defaults, size }, storm), [size, storm]);
+  const size0 = groups[0];
+  return (
+    <div className="est-teaser">
+      <div className="seg seg-tabs" role="radiogroup" aria-label="Estimate type">
+        {["Full replacement", "Storm or hail repair"].map((label, i) => (
+          <label key={label} className="seg-opt seg-tall">
+            <input type="radio" name="teaser-type" value={label} defaultChecked={i === 0} onChange={() => setStorm(i === 1)} />
+            <span>{label}</span>
+          </label>
+        ))}
+      </div>
+      <Seg name="teaser-size" legend={size0.legend} options={size0.options} pick={size} onPick={setSize} />
+      <Meter {...m} />
+      <p className="range-line">{rangeLine}</p>
+      <p className="disclaimer">{estimateDisclaimer}</p>
+      <Link href="/estimate/" className="btn btn-iris">
+        Open the full estimator
+      </Link>
+    </div>
+  );
+}
+
+/** Estimate page S2 to S4: type tiles, every detail as a segmented row, and the live range card. */
+export function EstimatorFull() {
+  const [storm, setStorm] = useState(false);
+  const [pick, setPick] = useState<Record<string, number>>(defaults);
+  const m = useMemo(() => model(pick, storm), [pick, storm]);
+  return (
+    <div className="est-full">
+      <section id="type" className="est-step" aria-label="1 Type">
+        <fieldset className="field">
+          <legend className="sr">Type</legend>
+          <div className="type-tiles">
+            {types.map((t, i) => (
+              <label key={t} className="type-tile">
+                <input type="radio" name="type" value={t} defaultChecked={i === 0} onChange={() => setStorm(i === 1)} />
+                <span>{t}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </section>
+
+      <section id="details" className="est-step" aria-label="2 Details">
+        {groups.map((g) => (
+          <div key={g.name} className={g.stormOnly ? `storm-only${storm ? " is-on" : ""}` : undefined}>
+            <Seg
+              name={g.name}
+              legend={g.legend}
+              options={g.options}
+              pick={pick[g.name]}
+              onPick={(i) => setPick((p) => ({ ...p, [g.name]: i }))}
+            />
+          </div>
+        ))}
+        <p className="permits">Permits: we handle them.</p>
+      </section>
+
+      <section id="range" className="est-step range-card glass" aria-label="3 Range">
+        <Meter {...m} />
+        <p className="helper">1 square = 100 square feet of roof.</p>
+        <EstimatorTable />
+        <p className="range-big">Your estimate: {rangeLine}.</p>
+        <p>What&apos;s included: [list].</p>
+        <p>What could change it: decking condition, number of layers, pitch, and permit requirements.</p>
+        <p className="disclaimer">{estimateDisclaimer}</p>
+      </section>
     </div>
   );
 }

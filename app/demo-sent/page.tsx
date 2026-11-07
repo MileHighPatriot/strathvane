@@ -1,23 +1,23 @@
-import type { Metadata } from "next";
 import Link from "next/link";
+import { demoLine } from "@/lib/content";
 import { pageMeta } from "@/lib/meta";
 
-export const metadata: Metadata = {
-  ...pageMeta("Demo Only | Strathvane", "Demo only. Nothing was sent, and no one is booked or charged.", "/demo-sent/"),
-  robots: "noindex",
-};
+export const metadata = pageMeta({
+  title: "Demo Only | Strathvane",
+  description: demoLine,
+  path: "/demo-sent/",
+  noindex: true,
+});
 
-export default function DemoSentPage() {
+export default function DemoSent() {
   return (
-    <section className="section">
-      <div className="section-inner">
-        <h1>Demo only</h1>
-        <p>Demo only. Nothing was sent, and no one is booked or charged.</p>
-        <p>
-          <Link className="btn btn-primary" href="/">
-            Go to the home page
-          </Link>
-        </p>
+    <section className="page-hero page-min" aria-labelledby="ds-title">
+      <div className="wrap narrow">
+        <h1 id="ds-title">Demo only</h1>
+        <p className="lead">{demoLine}</p>
+        <Link href="/" className="btn btn-iris">
+          Go to the home page
+        </Link>
       </div>
     </section>
   );

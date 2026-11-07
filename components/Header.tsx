@@ -2,101 +2,150 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { BrandMark } from "@/components/BrandMark";
-import { Icon } from "@/components/Icons";
-import { phoneHref } from "@/lib/paths";
+import Icon from "@/components/Icon";
+import Wordmark from "@/components/Wordmark";
+import { nav } from "@/lib/content";
+import { site } from "@/lib/site";
 
-const links = [
-  { href: "/services/", label: "Services" },
-  { href: "/estimate/", label: "Estimate" },
-  { href: "/#drone-inspection", label: "Drone inspection" },
-  { href: "/membership/", label: "Membership" },
-  { href: "/#storm-map", label: "Storm map" },
-  { href: "/book/", label: "Book" },
-];
-
-export function Header() {
+export default function Header() {
   const [open, setOpen] = useState(false);
-  const panelRef = useRef<HTMLElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
 
+  // Header turns into Basalt glass after 40px of scroll.
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      setScrolled(window.scrollY > 40);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Full-screen menu: trap focus, close on Escape, lock page scroll, return focus to the toggle.
   useEffect(() => {
     if (!open) return;
-    const panel = panelRef.current;
-    if (!panel) return;
-    const items = Array.from(panel.querySelectorAll<HTMLElement>("a, button"));
-    const first = items[0];
-    const last = items[items.length - 1];
-    first?.focus();
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
+    const menu = menuRef.current;
+    const toggle = toggleRef.current;
+    const focusables = () =>
+      Array.from(menu?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])") ?? []);
+    focusables()[0]?.focus();
+    document.documentElement.classList.add("menu-open");
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
         setOpen(false);
-        buttonRef.current?.focus();
         return;
       }
-      if (event.key !== "Tab" || items.length === 0) return;
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
       }
-    }
+    };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.documentElement.classList.remove("menu-open");
+      toggle?.focus();
+    };
   }, [open]);
 
   return (
-    <header className="site-header on-dark">
-      <div className="header-inner">
-        <Link href="/" className="brand-lockup" aria-label="Strathvane home">
-          <span className="mark-desktop">
-            <BrandMark size={40} />
-          </span>
-          <span className="mark-phone">
-            <BrandMark size={32} />
-          </span>
-          <span>
-            <span className="wordmark">
-              <span className="wm-strath">Strath</span>
-              <span className="wm-vane">vane</span>
-            </span>
-            <span className="wm-sub" aria-hidden="true">Roofing systems</span>
-            <span className="wm-desc" aria-hidden="true">Colorado roofing · Denver metro</span>
-          </span>
-        </Link>
-        <span className="badge">Concept project</span>
-        <nav ref={panelRef} className={open ? "nav-panel is-open" : "nav-panel"} id="site-nav" aria-label="Primary">
-          {links.map((link) => (
-            <Link key={link.href} href={link.href} onClick={() => setOpen(false)}>
-              {link.label}
-            </Link>
-          ))}
-          <Link href="/estimate/" className="btn btn-primary nav-cta" onClick={() => setOpen(false)}>
-            Get a free estimate
-          </Link>
-        </nav>
-        <div className="header-tools">
-          <a className="icon-btn header-call" href={phoneHref} aria-label="Call (555) 555-0142">
-            <Icon name="phone" />
-          </a>
-          <button
-            ref={buttonRef}
-            className="icon-btn menu-btn"
-            type="button"
-            aria-expanded={open}
-            aria-controls="site-nav"
-            aria-label={open ? "Close menu" : "Open menu"}
-            onClick={() => setOpen((value) => !value)}
-          >
-            <Icon name={open ? "check" : "arrow"} />
-          </button>
-          <Link href="/estimate/" className="btn btn-primary header-cta">
-            Get a free estimate
-          </Link>
+    <header className="site-header" data-scrolled={scrolled ? "" : undefined}>
+      <div className="wrap hdr-row">
+        <Wordmark />
+        <div className="hdr-meta">
+          <p className="hdr-desc">Colorado roofing · Denver metro</p>
+          <p className="badge">
+            <span className="dot" aria-hidden="true" />
+            Concept project
+          </p>
         </div>
+        <nav className="hdr-nav" aria-label="Main">
+          <ul>
+            {nav.map((item) => (
+              <li key={item.href}>
+                <Link href={item.href} className="nav-link">
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <Link href="/estimate/" className="btn btn-primary hdr-cta">
+          Get a free estimate
+        </Link>
+        <a href={site.phoneHref} className="icon-btn hdr-call" aria-label={`Call ${site.phoneDisplay}`}>
+          <Icon name="phone" />
+        </a>
+        <button
+          ref={toggleRef}
+          type="button"
+          className="icon-btn hdr-menu js-only"
+          aria-expanded={open}
+          aria-controls="site-menu"
+          aria-label="Open menu"
+          onClick={() => setOpen(true)}
+        >
+          <Icon name="menu" />
+        </button>
       </div>
+
+      {/* Without JS the menu button is hidden and these links show as a plain list on smaller screens. */}
+      <nav className="nojs-nav wrap" aria-label="Main (list)">
+        <ul>
+          {nav.map((item) => (
+            <li key={item.href}>
+              <Link href={item.href}>{item.label}</Link>
+            </li>
+          ))}
+          <li>
+            <Link href="/estimate/">Get a free estimate</Link>
+          </li>
+        </ul>
+      </nav>
+
+      {open ? (
+        <div id="site-menu" ref={menuRef} className="menu glass" role="dialog" aria-modal="true" aria-label="Menu">
+          <div className="wrap menu-top">
+            <Wordmark />
+            <button type="button" className="icon-btn" aria-label="Close menu" onClick={() => setOpen(false)}>
+              <Icon name="close" />
+            </button>
+          </div>
+          <nav className="wrap menu-nav" aria-label="Menu">
+            <ul>
+              {nav.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} className="menu-link" onClick={() => setOpen(false)}>
+                    <span>{item.label}</span>
+                    <Icon name="arrow" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Link href="/estimate/" className="btn btn-primary btn-block" onClick={() => setOpen(false)}>
+              Get a free estimate
+            </Link>
+            <a href={site.phoneHref} className="btn btn-ghost btn-block">
+              <Icon name="phone" />
+              Call {site.phoneDisplay}
+            </a>
+          </nav>
+        </div>
+      ) : null}
     </header>
   );
 }

@@ -1,29 +1,24 @@
-import { asset } from "@/lib/paths";
+import { asset } from "@/lib/site";
 
-type Shot = "drone" | "storm" | "install" | "roofline";
+export type PhotoName = "drone" | "storm" | "install" | "roofline";
 
-export function Photo({
-  name,
-  sizes,
-  className,
-  priority = false,
-}: {
-  name: Shot;
-  sizes: string;
-  className?: string;
-  priority?: boolean;
-}) {
+/**
+ * Kit photo (4:3) with its srcset. Decorative: each one sits beside copy that describes it, so alt="".
+ * Lazy and async; only the hero photo loads eagerly.
+ */
+export default function Photo({ name, sizes, className = "" }: { name: PhotoName; sizes: string; className?: string }) {
+  const src = (w: number) => asset(`/brand/${name}-${w}.webp`);
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
-      className={className}
-      src={asset(`/brand/${name}-1200.webp`)}
-      srcSet={`${asset(`/brand/${name}-160.webp`)} 160w, ${asset(`/brand/${name}-240.webp`)} 240w, ${asset(`/brand/${name}-800.webp`)} 800w, ${asset(`/brand/${name}-1200.webp`)} 1200w`}
+      className={`photo ${className}`}
+      src={src(1200)}
+      srcSet={`${src(160)} 160w, ${src(240)} 240w, ${src(1200)} 1200w`}
       sizes={sizes}
       width={1200}
       height={900}
       alt=""
-      loading={priority ? "eager" : "lazy"}
-      fetchPriority={priority ? "high" : "low"}
+      loading="lazy"
       decoding="async"
     />
   );
